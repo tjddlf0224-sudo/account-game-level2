@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전산회계 2급 마스터 — 5단계 훈련 허브</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cy: #00f2ff;
+  --pk: #ff2d78;
+  --gd: #ffd600;
+  --gn: #00e676;
+  --pu: #b44fff;
+  --bg: #020810;
+  --panel: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 20%, rgba(0,242,255,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 80%, rgba(180,79,255,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(255,45,120,0.04) 0%, transparent 60%);
+}
+
+/* ── 별 캔버스 ── */
+#starfield { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* ── 레이아웃 ── */
+.wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:60px 40px 80px; }
+
+/* ── 헤더 ── */
+.hub-header { text-align:center; margin-bottom:64px; }
+.hub-badge {
+  display:inline-block;
+  font-family:'Orbitron', monospace;
+  font-size:0.72rem; letter-spacing:4px; color:rgba(0,242,255,0.6);
+  border:1px solid rgba(0,242,255,0.2);
+  padding:6px 20px; border-radius:50px;
+  margin-bottom:22px;
+  background:rgba(0,242,255,0.04);
+}
+.hub-title {
+  font-family:'Black Han Sans', sans-serif;
+  font-size:3.8rem;
+  line-height:1.1;
+  margin-bottom:14px;
+}
+.hub-title .t1 { color:#fff; }
+.hub-title .t2 {
+  background: linear-gradient(90deg, var(--cy), var(--pu));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.hub-desc {
+  font-size:1.05rem;
+  color:rgba(255,255,255,0.45);
+  letter-spacing:0.5px;
+}
+
+/* ── 경로 라인 ── */
+.path-line {
+  display:flex; align-items:center; justify-content:center;
+  gap:0; margin-bottom:48px; flex-wrap:wrap;
+}
+.path-step {
+  display:flex; align-items:center; gap:10px;
+  font-family:'Orbitron', monospace;
+  font-size:0.7rem; letter-spacing:2px;
+  color:rgba(255,255,255,0.25);
+  white-space:nowrap;
+}
+.path-step.active { color:var(--cy); }
+.path-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:rgba(255,255,255,0.15);
+  flex-shrink:0;
+}
+.path-step.active .path-dot { background:var(--cy); box-shadow:0 0 10px var(--cy); }
+.path-arrow {
+  width:40px; height:1px;
+  background:linear-gradient(to right, rgba(255,255,255,0.1), rgba(255,255,255,0.2));
+  flex-shrink:0;
+}
+
+/* ── 게임 카드 그리드 ── */
+.games-grid {
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:16px;
+  margin-bottom:60px;
+}
+
+.game-card {
+  position:relative;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:28px 20px 24px;
+  text-decoration:none; color:white;
+  cursor:pointer;
+  transition:transform 0.22s, box-shadow 0.22s, border-color 0.22s, background 0.22s;
+  overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+}
+.game-card::before {
+  content:'';
+  position:absolute; inset:0;
+  background:var(--card-glow, rgba(0,242,255,0.06));
+  opacity:0; transition:opacity 0.25s;
+  border-radius:inherit;
+}
+.game-card:hover { transform:translateY(-8px); border-color:var(--card-color, var(--cy)); }
+.game-card:hover::before { opacity:1; }
+.game-card:hover { box-shadow:0 20px 50px var(--card-shadow, rgba(0,242,255,0.2)); }
+
+/* 단계별 색상 */
+.card-1 { --card-color:var(--gn);  --card-glow:rgba(0,230,118,0.06);  --card-shadow:rgba(0,230,118,0.2);  }
+.card-2 { --card-color:var(--cy);  --card-glow:rgba(0,242,255,0.06);  --card-shadow:rgba(0,242,255,0.2);  }
+.card-3 { --card-color:var(--pu);  --card-glow:rgba(180,79,255,0.06); --card-shadow:rgba(180,79,255,0.2); }
+.card-4 { --card-color:var(--gd);  --card-glow:rgba(255,214,0,0.06);  --card-shadow:rgba(255,214,0,0.2);  }
+.card-5 { --card-color:var(--pk);  --card-glow:rgba(255,45,120,0.06); --card-shadow:rgba(255,45,120,0.2); }
+
+.card-stage {
+  font-family:'Orbitron', monospace;
+  font-size:0.65rem; letter-spacing:3px;
+  color:var(--card-color, var(--cy));
+  opacity:0.7;
+}
+.card-icon {
+  font-size:2.8rem;
+  filter:drop-shadow(0 0 12px var(--card-color, var(--cy)));
+  transition:transform 0.2s;
+}
+.game-card:hover .card-icon { transform:scale(1.15); }
+
+.card-title {
+  font-family:'Black Han Sans', sans-serif;
+  font-size:1.05rem; text-align:center;
+  color:#fff; line-height:1.35;
+}
+.card-desc {
+  font-size:0.82rem; color:rgba(255,255,255,0.4);
+  text-align:center; line-height:1.6;
+}
+.card-count {
+  font-family:'Orbitron', monospace;
+  font-size:0.68rem; color:var(--card-color, var(--cy));
+  background:rgba(255,255,255,0.04);
+  padding:4px 14px; border-radius:50px;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.card-play {
+  display:flex; align-items:center; justify-content:center;
+  width:100%; padding:11px;
+  background:transparent;
+  border:1.5px solid var(--card-color, var(--cy));
+  border-radius:50px;
+  font-family:'Black Han Sans', sans-serif;
+  font-size:0.9rem; color:var(--card-color, var(--cy));
+  transition:background 0.18s, color 0.18s;
+  margin-top:4px;
+}
+.game-card:hover .card-play {
+  background:var(--card-color, var(--cy));
+  color:#000;
+}
+
+/* ── 하단 정보 박스 ── */
+.info-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:16px; margin-bottom:40px;
+}
+.info-box {
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 24px;
+}
+.info-box-title {
+  font-family:'Orbitron', monospace;
+  font-size:0.68rem; letter-spacing:3px;
+  color:rgba(255,255,255,0.3);
+  margin-bottom:10px;
+}
+.info-box-body {
+  font-size:0.92rem; color:rgba(255,255,255,0.6);
+  line-height:1.75;
+}
+.info-box-body strong { color:#fff; }
+
+/* ── GAS 안내 모달 ── */
+.gas-btn {
+  display:block; margin:0 auto;
+  padding:12px 36px;
+  background:transparent;
+  border:1.5px solid rgba(255,255,255,0.2);
+  border-radius:50px;
+  font-family:'Black Han Sans', sans-serif;
+  font-size:0.95rem; color:rgba(255,255,255,0.4);
+  cursor:pointer; transition:all 0.18s;
+}
+.gas-btn:hover { border-color:var(--cy); color:var(--cy); }
+
+.modal-bg {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(2,8,20,0.92); backdrop-filter:blur(16px);
+  display:none; align-items:center; justify-content:center;
+}
+.modal-bg.open { display:flex; }
+.modal {
+  background:rgba(10,18,40,0.98);
+  border:1px solid rgba(0,242,255,0.2);
+  border-radius:24px;
+  padding:40px 48px;
+  max-width:700px; width:90%;
+  max-height:85vh; overflow-y:auto;
+}
+.modal h3 {
+  font-family:'Black Han Sans', sans-serif;
+  font-size:1.6rem; color:var(--cy);
+  margin-bottom:20px;
+}
+.modal p { font-size:0.95rem; color:rgba(255,255,255,0.6); line-height:1.75; margin-bottom:14px; }
+.modal code {
+  display:block;
+  background:rgba(0,0,0,0.5);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;
+  padding:16px 20px;
+  font-size:0.82rem; color:#00e676;
+  font-family:'Courier New', monospace;
+  white-space:pre; overflow-x:auto;
+  margin-bottom:14px; line-height:1.6;
+}
+.modal-close {
+  display:block; margin:20px auto 0;
+  padding:12px 40px;
+  background:var(--cy); color:#000;
+  border:none; border-radius:50px;
+  font-family:'Black Han Sans', sans-serif; font-size:1rem;
+  cursor:pointer;
+}
+
+/* ── 푸터 ── */
+.hub-footer {
+  text-align:center;
+  font-size:0.82rem; color:rgba(255,255,255,0.2);
+  padding-top:20px;
+  border-top:1px solid var(--border);
+}
+
+/* ── 애니메이션 ── */
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.game-card { animation:fadeInUp 0.5s ease both; }
+.card-1 { animation-delay:0.05s; }
+.card-2 { animation-delay:0.12s; }
+.card-3 { animation-delay:0.19s; }
+.card-4 { animation-delay:0.26s; }
+.card-5 { animation-delay:0.33s; }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div class="wrap">
+
+  <!-- 헤더 -->
+  <header class="hub-header">
+    <div class="hub-badge">ACCOUNTING MASTER SYSTEM · 전산회계 2급</div>
+    <div class="hub-title">
+      <div class="t1">5단계로 완성하는</div>
+      <div class="t2">전산회계 2급 마스터</div>
+    </div>
+    <div class="hub-desc">계정과목 암기부터 장부조회 실전까지 — 게임으로 반복, 시험으로 완성</div>
+  </header>
+
+  <!-- 학습 경로 -->
+  <div class="path-line">
+    <div class="path-step active"><div class="path-dot"></div>암기</div>
+    <div class="path-arrow"></div>
+    <div class="path-step active"><div class="path-dot"></div>연결</div>
+    <div class="path-arrow"></div>
+    <div class="path-step active"><div class="path-dot"></div>분개</div>
+    <div class="path-arrow"></div>
+    <div class="path-step active"><div class="path-dot"></div>결산</div>
+    <div class="path-arrow"></div>
+    <div class="path-step active"><div class="path-dot"></div>실전</div>
+  </div>
+
+  <!-- 게임 카드 -->
+  <div class="games-grid">
+
+    <a class="game-card card-1" href="game1_acid.html">
+      <div class="card-stage">STAGE 01</div>
+      <div class="card-icon">☁️</div>
+      <div class="card-title">계정과목<br>산성비</div>
+      <div class="card-desc">떨어지는 단어 중<br>계정과목만 클릭!</div>
+      <div class="card-count">52계정 + 함정41개</div>
+      <div class="card-play">▶ 시작</div>
+    </a>
+
+    <a class="game-card card-2" href="game2_memory.html">
+      <div class="card-stage">STAGE 02</div>
+      <div class="card-icon">🧩</div>
+      <div class="card-title">기억의<br>전당</div>
+      <div class="card-desc">계정과목과 뜻을<br>카드로 매칭!</div>
+      <div class="card-count">61쌍 랜덤 8세트</div>
+      <div class="card-play">▶ 시작</div>
+    </a>
+
+    <a class="game-card card-3" href="game3_debit.html">
+      <div class="card-stage">STAGE 03</div>
+      <div class="card-icon">⚡</div>
+      <div class="card-title">회계<br>차변대변</div>
+      <div class="card-desc">거래를 읽고<br>차변/대변 판별!</div>
+      <div class="card-count">83문항</div>
+      <div class="card-play">▶ 시작</div>
+    </a>
+
+    <a class="game-card card-4" href="game4_factory.html">
+      <div class="card-stage">STAGE 04</div>
+      <div class="card-icon">🏭</div>
+      <div class="card-title">결산분개<br>조립공장</div>
+      <div class="card-desc">결산 거래의 차변·<br>대변을 직접 조립!</div>
+      <div class="card-count">34문항</div>
+      <div class="card-play">▶ 시작</div>
+    </a>
+
+    <a class="game-card card-5" href="game5_flight.html">
+      <div class="card-stage">STAGE 05</div>
+      <div class="card-icon">🛩</div>
+      <div class="card-title">플라이트<br>장부조회</div>
+      <div class="card-desc">비행기를 조종해<br>올바른 장부 통과!</div>
+      <div class="card-count">27문항</div>
+      <div class="card-play">▶ 시작</div>
+    </a>
+
+  </div>
+
+  <!-- 정보 박스 -->
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-box-title">📚 학습 설계</div>
+      <div class="info-box-body">
+        <strong>1~2단계</strong>: 계정과목 암기·연결<br>
+        <strong>3단계</strong>: 차변/대변 원리 체득<br>
+        <strong>4단계</strong>: 결산분개 반복 훈련<br>
+        <strong>5단계</strong>: 장부조회 실전 감각
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">🏆 공통 랭킹 시스템</div>
+      <div class="info-box-body">
+        모든 게임의 점수가<br>
+        <strong>하나의 구글 시트</strong>에 통합 저장<br>
+        게임별 시트 탭으로 분리<br>
+        전체 순위 실시간 확인
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">⚙️ GAS 연동 설정</div>
+      <div class="info-box-body">
+        구글 스프레드시트 1개에<br>
+        <strong>시트 5개</strong>로 게임별 분리<br>
+        하단 버튼에서 설정 방법 확인<br>
+        URL 1개만 모든 게임에 적용
+      </div>
+    </div>
+  </div>
+
+  <button class="gas-btn" onclick="document.getElementById('gasModal').classList.add('open')">
+    ⚙️ 통합 Google Sheets 설정 방법 보기
+  </button>
+
+  <div class="hub-footer" style="margin-top:40px;">
+    전산회계 2급 마스터 시스템 · 교육용 무료 게임
+  </div>
+
+</div>
+
+<!-- GAS 설정 모달 -->
+<div class="modal-bg" id="gasModal">
+  <div class="modal">
+    <h3>⚙️ 통합 Google Sheets 설정</h3>
+    <p>구글 스프레드시트 <strong>1개</strong>에 아래 Apps Script를 연결하면, 5개 게임의 랭킹이 시트별로 자동 분리 저장됩니다.</p>
+
+    <p><strong style="color:var(--gd)">① Google Sheets 새 파일 생성 → 확장 프로그램 → Apps Script</strong></p>
+    <p>아래 코드 전체를 붙여넣고 저장 후 <strong>배포 → 새 배포 → 웹 앱 → 액세스: 모든 사용자</strong></p>
+
+    <code>const SHEETS = {
+  acid:    "1단계_산성비",
+  memory:  "2단계_기억의전당",
+  debit:   "3단계_차변대변",
+  factory: "4단계_조립공장",
+  flight:  "5단계_플라이트"
+};
+
+function getSheet(game) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const name = SHEETS[game] || game;
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
+function doPost(e) {
+  const d = JSON.parse(e.postData.contents);
+  const sh = getSheet(d.game || "unknown");
+  if (sh.getLastRow() === 0)
+    sh.appendRow(["이름","점수","콤보","정답수","날짜","저장시각"]);
+  sh.appendRow([
+    d.name, d.score, d.combo||0, d.correct||0,
+    d.date||"", new Date().toLocaleString("ko-KR")
+  ]);
+  return ContentService
+    .createTextOutput(JSON.stringify({ok:true}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  const sh = getSheet(e.parameter.game || "unknown");
+  if (sh.getLastRow() <= 1)
+    return ContentService.createTextOutput("[]")
+      .setMimeType(ContentService.MimeType.JSON);
+  const rows = sh.getDataRange().getValues().slice(1);
+  const out = rows
+    .map(r => ({name:r[0],score:+r[1],combo:+r[2],correct:+r[3],date:r[4]}))
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 20);
+  return ContentService
+    .createTextOutput(JSON.stringify(out))
+    .setMimeType(ContentService.MimeType.JSON);
+}</code>
+
+    <p><strong style="color:var(--gd)">② 배포 URL을 각 게임 파일 상단 SHEET_URL에 붙여넣기</strong></p>
+    <p>5개 게임 파일 모두 <strong>동일한 URL 1개</strong>를 사용합니다. 각 게임은 <code style="display:inline;background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;">game: "acid"</code> 같은 식별자를 함께 전송해 시트를 자동 분리합니다.</p>
+
+    <button class="modal-close" onclick="document.getElementById('gasModal').classList.remove('open')">닫기</button>
+  </div>
+</div>
+
+<script>
+// ── 별 배경 ──
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+function mkStar() {
+  return {
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.4 + 0.2,
+    v: Math.random() * 0.3 + 0.05,
+    o: Math.random() * 0.6 + 0.2,
+    c: Math.random() > 0.88 ? '#00f2ff' : Math.random() > 0.75 ? '#b44fff' : '#ffffff'
+  };
+}
+function initStars() {
+  stars = Array.from({length: 160}, mkStar);
+}
+function animStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.y += s.v;
+    if (s.y > canvas.height) { s.y = -2; s.x = Math.random() * canvas.width; }
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.c;
+    ctx.globalAlpha = s.o;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+  requestAnimationFrame(animStars);
+}
+resize();
+initStars();
+animStars();
+window.addEventListener('resize', () => { resize(); initStars(); });
+</script>
+</body>
+</html>
