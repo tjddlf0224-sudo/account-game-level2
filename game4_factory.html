@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏭 결산분개 조립 공장</title>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green:  #00e676;
+            --blue:   #00c2ff;
+            --yellow: #ffd600;
+            --red:    #ff2d55;
+            --bg:     #0a0d14;
+            --panel:  rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.10);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: var(--bg);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+            background-image:
+                radial-gradient(ellipse 70% 50% at 15% 15%, rgba(0,230,118,0.06) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 85% 85%, rgba(0,194,255,0.06) 0%, transparent 55%);
+        }
+
+        /* ══ 헤더 ══ */
+        header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 52px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(12px);
+        }
+        .logo {
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 1.45rem;
+            color: var(--green);
+            text-shadow: 0 0 18px rgba(0,230,118,0.4);
+        }
+        .hud { display: flex; gap: 28px; align-items: center; }
+        .hud-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+        .hud-label { font-size: 0.78rem; opacity: 0.45; letter-spacing: 2px; text-transform: uppercase; }
+        .hud-val { font-family: 'Black Han Sans', sans-serif; font-size: 1.75rem; line-height: 1; }
+        #hud-time  { color: var(--red); }
+        #hud-score { color: var(--yellow); }
+        #hud-combo { color: var(--green); }
+        .timer-track {
+            width: 200px; height: 8px;
+            background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+        }
+        #timer-bar {
+            height: 100%; width: 100%;
+            background: linear-gradient(to right, var(--green), var(--yellow), var(--red));
+            border-radius: 4px; transition: width 1s linear;
+        }
+        .badge { font-size: 0.9rem; color: rgba(255,255,255,0.3); }
+
+        /* ══ 중앙 게임 영역 — 세로로 꽉 채움 ══ */
+        .game-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 16px 100px 12px;
+            overflow: hidden;
+        }
+
+        /* ── 문제 카드 ── */
+        .question-card {
+            width: 100%;
+            background: rgba(255,255,255,0.97);
+            color: #1a1a2e;
+            border-radius: 22px;
+            padding: 28px 44px 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 16px 50px rgba(0,0,0,0.5);
+            border: 3px solid transparent;
+            transition: border-color 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+        .question-card.correct { border-color: var(--green); box-shadow: 0 0 40px rgba(0,230,118,0.35); }
+        .question-card.wrong   { background: #ffe3e7; border-color: var(--red); }
+
+        .q-label {
+            font-size: 0.78rem; font-weight: 700; color: #bbb;
+            letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 10px;
+        }
+        .q-text {
+            font-size: 1.5rem; font-weight: 900;
+            color: #1a1a2e; line-height: 1.55; word-break: keep-all;
+        }
+
+        /* 힌트 행 */
+        .hint-row {
+            display: flex; align-items: center; gap: 12px;
+            margin-top: 14px; min-height: 34px;
+        }
+        .hint-btn {
+            flex-shrink: 0;
+            padding: 6px 16px;
+            background: rgba(0,0,0,0.06);
+            border: 1.5px solid #ccc; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 700; color: #999;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .hint-btn:hover { background: rgba(0,0,0,0.1); color: #666; border-color: #aaa; }
+        .hint-btn.shown { background: rgba(255,193,7,0.1); border-color: #e6a800; color: #a07600; }
+
+        .hint-text {
+            font-size: 1rem; color: #777;
+            background: rgba(255,193,7,0.08);
+            padding: 5px 16px; border-radius: 20px;
+            border: 1px solid rgba(255,193,7,0.25);
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+        .hint-text.visible { display: block; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ── 슬롯 영역 ── */
+        .slots-row {
+            display: grid;
+            grid-template-columns: 1fr 52px 1fr;
+            width: 100%;
+            align-items: end;
+        }
+        .slot-wrap { display: flex; flex-direction: column; gap: 7px; }
+        .slot-title {
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 1.05rem; letter-spacing: 2px;
+            text-align: center; opacity: 0.55;
+        }
+        .slot-title.left  { color: var(--blue); }
+        .slot-title.right { color: var(--red); }
+
+        .slot {
+            background: rgba(0,0,0,0.3);
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 16px;
+            height: 82px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            position: relative;
+        }
+        .slot.active-debit {
+            border-color: var(--blue); background: rgba(0,194,255,0.08);
+            box-shadow: 0 0 22px rgba(0,194,255,0.2);
+            animation: pulseBorderBlue 1.2s infinite;
+        }
+        .slot.active-credit {
+            border-color: var(--red); background: rgba(255,45,85,0.08);
+            box-shadow: 0 0 22px rgba(255,45,85,0.2);
+            animation: pulseBorderRed 1.2s infinite;
+        }
+        .slot.filled-debit  { border-style:solid; border-color:var(--blue); background:rgba(0,194,255,0.1);  color:var(--blue); }
+        .slot.filled-credit { border-style:solid; border-color:var(--red);  background:rgba(255,45,85,0.1); color:var(--red); }
+        .slot.correct { border-color:var(--green)!important; background:rgba(0,230,118,0.12)!important; color:var(--green)!important; }
+        .slot.wrong   { border-color:var(--red)!important;   background:rgba(255,45,85,0.12)!important; }
+
+        .slot-placeholder { font-size: 1rem; opacity: 0.3; font-family: 'Noto Sans KR'; font-weight: 400; }
+        .slot-undo {
+            position: absolute; top: 7px; right: 12px;
+            font-size: 0.9rem; opacity: 0.4; cursor: pointer;
+        }
+        .slot-undo:hover { opacity: 0.85; }
+
+        @keyframes pulseBorderBlue {
+            0%,100% { border-color: rgba(0,194,255,0.35); }
+            50%      { border-color: var(--blue); box-shadow: 0 0 26px rgba(0,194,255,0.45); }
+        }
+        @keyframes pulseBorderRed {
+            0%,100% { border-color: rgba(255,45,85,0.35); }
+            50%      { border-color: var(--red); box-shadow: 0 0 26px rgba(255,45,85,0.45); }
+        }
+
+        .arrow-divider {
+            display: flex; align-items: flex-end; justify-content: center;
+            font-size: 1.8rem; opacity: 0.2; padding-bottom: 22px;
+        }
+
+        /* 단계 안내 */
+        .step-hint {
+            text-align: center; font-size: 1rem;
+            color: rgba(255,255,255,0.35);
+        }
+        .step-hint span { color: rgba(255,255,255,0.75); font-weight: 700; }
+
+        /* ── 선택지 4개 ── */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px; width: 100%;
+        }
+        .opt-btn {
+            padding: 20px 8px;
+            background: rgba(255,255,255,0.07);
+            border: 1.5px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            color: white;
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 1.12rem;
+            cursor: pointer;
+            transition: all 0.12s;
+            position: relative; overflow: hidden;
+        }
+        .opt-btn::before {
+            content:''; position:absolute; inset:0;
+            background:rgba(255,255,255,0.08); opacity:0; transition:opacity 0.2s;
+        }
+        .opt-btn:hover::before { opacity:1; }
+        .opt-btn:hover { border-color:rgba(255,255,255,0.35); transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,0.3); }
+        .opt-btn:active { transform:translateY(1px); }
+        .opt-btn.used { opacity:0.22; pointer-events:none; }
+        .opt-btn.highlight-debit  { border-color:var(--blue); background:rgba(0,194,255,0.1); }
+        .opt-btn.highlight-credit { border-color:var(--red);  background:rgba(255,45,85,0.1); }
+
+        /* ── 접이식 참고표 ── */
+        .ref-bar {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; flex-shrink: 0;
+        }
+        .ref-toggle {
+            padding: 6px 18px;
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 20px; color: rgba(255,255,255,0.4);
+            font-size: 0.9rem; cursor: pointer;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .ref-toggle:hover { color: white; border-color: rgba(255,255,255,0.3); }
+        .ref-toggle.open  { color: var(--green); border-color: rgba(0,230,118,0.4); background: rgba(0,230,118,0.06); }
+        .ref-line { flex:1; height:1px; background: var(--border); }
+
+        .ref-panel {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px; width: 100%; flex-shrink: 0;
+            animation: slideDown 0.2s ease;
+        }
+        .ref-panel.open { display: grid; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+        .ref-item {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 12px; padding: 10px 14px;
+            font-size: 0.9rem; color: rgba(255,255,255,0.6); line-height: 1.7;
+        }
+        .ref-item strong { color: white; display: block; font-size: 0.92rem; margin-bottom: 3px; }
+        .ref-item.c-green  { border-left: 3px solid var(--green); }
+        .ref-item.c-blue   { border-left: 3px solid var(--blue); }
+        .ref-item.c-yellow { border-left: 3px solid var(--yellow); }
+        .ref-item.c-red    { border-left: 3px solid var(--red); }
+
+        /* ══ 팝업 ══ */
+        .combo-popup {
+            position: fixed; top: 28%; left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Black Han Sans'; font-size: 3.2rem;
+            color: var(--yellow);
+            text-shadow: 0 0 20px rgba(255,214,0,0.8), 2px 2px 0 #000;
+            pointer-events: none; z-index: 60; display: none;
+        }
+        .bonus-pop {
+            position: fixed; top: 40%; left: 50%;
+            transform: translate(-50%,-50%);
+            font-family: 'Black Han Sans'; font-size: 2.2rem;
+            color: var(--green);
+            text-shadow: 0 0 16px rgba(0,230,118,0.7), 2px 2px 0 #000;
+            pointer-events: none; z-index: 60; display: none;
+        }
+        @keyframes comboPop {
+            0%   { opacity:0; transform:translate(-50%,-50%) scale(0.4); }
+            40%  { opacity:1; transform:translate(-50%,-65%) scale(1.25); }
+            100% { opacity:0; transform:translate(-50%,-110%) scale(1); }
+        }
+        @keyframes bonusPop {
+            0%   { opacity:0; transform:translate(-50%,-50%) scale(0.5); }
+            35%  { opacity:1; transform:translate(-50%,-55%) scale(1.15); }
+            100% { opacity:0; transform:translate(-50%,-120%) scale(1); }
+        }
+
+        /* ══ 오버레이 공통 ══ */
+        .overlay {
+            position: fixed; inset: 0;
+            background: rgba(8,10,18,0.94);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 200; backdrop-filter: blur(18px); gap: 14px;
+        }
+        .ov-title {
+            font-family: 'Black Han Sans'; font-size: 2.8rem;
+            color: var(--green); text-shadow: 0 0 28px rgba(0,230,118,0.5);
+        }
+        .ov-sub { font-size: 1rem; color: rgba(255,255,255,0.4); }
+        .start-cards {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            width: 560px; margin: 6px 0 16px;
+        }
+        .scard {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 14px; padding: 16px 18px;
+            font-size: 1rem; color: rgba(255,255,255,0.65); line-height: 1.75;
+        }
+        .scard strong { color: white; display: block; margin-bottom: 5px; font-size: 1.05rem; }
+
+        /* 결과 */
+        .res-rank {
+            font-family: 'Black Han Sans'; font-size: 1.25rem; color: var(--green);
+            background: rgba(0,230,118,0.1); padding: 7px 26px;
+            border-radius: 50px; border: 1px solid rgba(0,230,118,0.3);
+        }
+        .res-score {
+            font-family: 'Black Han Sans'; font-size: 4rem; color: var(--yellow);
+            text-shadow: 0 0 30px rgba(255,214,0,0.5);
+        }
+        .res-stats {
+            display: flex; gap: 28px;
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 14px; padding: 14px 28px;
+            font-size: 1rem; color: rgba(255,255,255,0.5);
+        }
+        .res-stats span { color: white; font-weight: 700; }
+        .save-row { display: flex; gap: 10px; align-items: center; }
+        .name-input {
+            padding: 11px 18px; background: rgba(255,255,255,0.09);
+            border: 2px solid var(--border); border-radius: 12px;
+            color: white; font-size: 1rem; text-align: center;
+            font-family: 'Noto Sans KR'; width: 150px; outline: none;
+            transition: border-color 0.2s;
+        }
+        .name-input:focus { border-color: var(--green); }
+        .name-input::placeholder { color: rgba(255,255,255,0.28); }
+        .pill {
+            padding: 11px 28px; border: none; border-radius: 50px;
+            font-family: 'Black Han Sans'; font-size: 1rem;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .pill:hover  { transform: translateY(-2px); }
+        .pill:active { transform: translateY(1px); }
+        .pill-green { background: var(--green); color: #000; box-shadow: 0 4px 18px rgba(0,230,118,0.45); }
+        .pill-blue  { background: var(--blue);  color: #000; box-shadow: 0 4px 18px rgba(0,194,255,0.45); }
+        .pill-start {
+            background: var(--green); color: #000;
+            font-size: 1.3rem; padding: 16px 56px;
+            box-shadow: 0 4px 24px rgba(0,230,118,0.5);
+            animation: pulseGreen 1.8s infinite;
+        }
+        @keyframes pulseGreen {
+            0%,100% { transform:scale(1);    box-shadow:0 4px 20px rgba(0,230,118,0.4); }
+            50%     { transform:scale(1.04); box-shadow:0 6px 32px rgba(0,230,118,0.7); }
+        }
+        .rank-box {
+            width: 480px; max-height: 220px; overflow-y: auto;
+            background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 4px 0;
+        }
+        .rank-box::-webkit-scrollbar { width: 4px; }
+        .rank-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 2px; }
+        .rank-row {
+            display: grid; grid-template-columns: 52px 1fr 110px 80px;
+            padding: 9px 18px; border-bottom: 1px solid var(--border);
+            font-size: 0.95rem; align-items: center; gap: 8px;
+        }
+        .rank-row:last-child { border-bottom: none; }
+        .rk-num { font-family: 'Black Han Sans'; color: rgba(255,255,255,0.35); }
+        .rk-num.top { color: var(--yellow); }
+        .rk-name { font-weight: 700; }
+        .rk-score { color: var(--yellow); font-weight: 700; text-align: right; }
+        .rk-date  { font-size: 0.88rem; color: rgba(255,255,255,0.3); text-align: right; }
+        .rank-me  { background: rgba(0,230,118,0.07); }
+        .loading-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 20px; color: rgba(255,255,255,0.35); font-size: 1rem;
+        }
+        .spinner {
+            width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-top-color: var(--green); border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #save-status { font-size: 0.95rem; color: rgba(255,255,255,0.35); height: 18px; text-align: center; }
+        .shake { animation: shake 0.35s; }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%  { transform: translateX(-7px); }
+            60%  { transform: translateX(7px); }
+        }
+    </style>
+</head>
+<body>
+  <div class="game-wrapper" style="max-width: 1000px; width: 100%; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 50px rgba(0,0,0,0.8); position: relative; z-index: 10; overflow: hidden;">
+
+    <div id="start-screen" class="overlay">
+        <div class="ov-title">🏭 결산분개 조립 공장</div>
+        <div class="ov-sub">전산회계 2급 · 결산정리분개 조립 게임</div>
+        <div class="start-cards">
+            <div class="scard">
+                <strong>🔧 게임 방법</strong>
+                거래 상황을 읽고<br>
+                보기에서 <b style="color:var(--blue)">차변</b>→<b style="color:var(--red)">대변</b> 순서로 클릭!<br>
+                틀리면 같은 문제 재도전 가능
+            </div>
+            <div class="scard">
+                <strong>⏱️ 규칙</strong>
+                제한 시간 <strong style="color:var(--yellow)">60초</strong> 에서 시작<br>
+                정답 시 <strong style="color:var(--green)">+10초</strong> 보너스!<br>
+                오답 시 <strong style="color:var(--red)">-5초</strong> 패널티
+            </div>
+            <div class="scard">
+                <strong>💎 점수 체계</strong>
+                기본 정답: <strong>150점</strong><br>
+                콤보 보너스: +30점/연속<br>
+                빠를수록 더 유리!
+            </div>
+            <div class="scard">
+                <strong>🏆 직급 체계</strong>
+                👶 분개 초보 (0~)<br>
+                💼 수습 사원 (600~)<br>
+                🔧 숙련 조교 (1,500~)<br>
+                🏭 전설 공장장 (3,000~)
+            </div>
+        </div>
+        <button class="pill pill-start" onclick="startGame()">▶ 공장 가동 시작</button>
+    </div>
+
+    <div id="result-screen" class="overlay" style="display:none">
+        <div class="ov-title" style="font-size:2.4rem;color:var(--yellow);">공장 가동 중단 🏭</div>
+        <div id="res-rank" class="res-rank">최종 직급: 분개 초보</div>
+        <div id="res-score" class="res-score">0점</div>
+        <div class="res-stats">
+            정답 <span id="stat-ok">0</span>문항 &nbsp;|&nbsp;
+            오답 <span id="stat-no">0</span>회 &nbsp;|&nbsp;
+            최고 콤보 <span id="stat-combo">0</span>x
+        </div>
+        <div class="save-row">
+            <input type="text" id="player-name" class="name-input" placeholder="이니셜 (예: KMJ)" maxlength="4">
+            <button class="pill pill-blue" onclick="saveScore()" id="save-btn">💾 저장</button>
+        </div>
+        <div id="save-status"></div>
+        <div style="font-family:'Black Han Sans';font-size:1rem;color:rgba(255,255,255,0.28);letter-spacing:2px;">🏆 TOP 랭킹</div>
+        <div class="rank-box" id="rank-box">
+            <div class="loading-row"><div class="spinner"></div> 불러오는 중...</div>
+        </div>
+        <button class="pill pill-green" onclick="startGame()" style="margin-top:4px;">↺ 다시 조립하기</button>
+    </div>
+
+    <header>
+        <div class="logo">🏭 결산분개 조립 공장</div>
+        <div class="hud">
+            <div class="hud-stat">
+                <div class="hud-label">TIME</div>
+                <div class="hud-val" id="hud-time">60</div>
+            </div>
+            <div class="timer-track"><div id="timer-bar" style="width:100%"></div></div>
+            <div class="hud-stat">
+                <div class="hud-label">SCORE</div>
+                <div class="hud-val" id="hud-score">0</div>
+            </div>
+            <div class="hud-stat">
+                <div class="hud-label">COMBO</div>
+                <div class="hud-val" id="hud-combo">0x</div>
+            </div>
+        </div>
+        
+        <button onclick="location.href='index.html'" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); color:white; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:'Black Han Sans'; font-size:1.1rem; margin-left:20px;">🏠 나가기</button>
+    </header>
+
+<!-- ── 게임 메인 ── -->
+<div class="game-main">
+
+    <!-- 1. 문제 카드 -->
+    <div id="q-card" class="question-card">
+        <div class="q-label">QUESTION — 차변과 대변을 순서대로 조립하세요</div>
+        <div id="q-text" class="q-text">공장 가동 버튼을 눌러 시작하세요!</div>
+        <div class="hint-row">
+            <button class="hint-btn" id="hint-btn" onclick="toggleHint()">💡 힌트 보기</button>
+            <div class="hint-text" id="hint-text"></div>
+        </div>
+    </div>
+
+    <!-- 2. 슬롯 -->
+    <div class="slots-row" style="width:100%;">
+        <div class="slot-wrap">
+            <div class="slot-title left">차 변 (借邊)</div>
+            <div id="slot-dr" class="slot active-debit" onclick="revertSlot('dr')">
+                <span class="slot-placeholder" id="ph-dr">← 차변 계정 선택</span>
+                <span id="val-dr" style="display:none"></span>
+                <span class="slot-undo" id="undo-dr" style="display:none">✕ 취소</span>
+            </div>
+        </div>
+        <div class="arrow-divider">▶</div>
+        <div class="slot-wrap">
+            <div class="slot-title right">대 변 (貸邊)</div>
+            <div id="slot-cr" class="slot" onclick="revertSlot('cr')">
+                <span class="slot-placeholder" id="ph-cr">대변 계정 선택 →</span>
+                <span id="val-cr" style="display:none"></span>
+                <span class="slot-undo" id="undo-cr" style="display:none">✕ 취소</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 단계 안내 -->
+    <div class="step-hint" id="step-hint">
+        <span>차변</span> 계정과목을 먼저 선택하세요
+    </div>
+
+    <!-- 4. 선택지 -->
+    <div class="options-grid" id="options-grid" style="width:100%;"></div>
+
+    <!-- 5. 참고표 토글 버튼 -->
+    <div class="ref-bar" style="width:100%;">
+        <button class="ref-toggle" id="ref-btn" onclick="toggleRef()">📋 계정과목 참고표 ▾</button>
+        <div class="ref-line"></div>
+    </div>
+
+    <!-- 6. 참고표 (기본 접힘) -->
+    <div class="ref-panel" id="ref-panel" style="width:100%;">
+        <div class="ref-item c-green">
+            <strong>📌 발생주의 – 비용</strong>
+            미지급비용 계상<br>선급비용 정리
+        </div>
+        <div class="ref-item c-blue">
+            <strong>📌 발생주의 – 수익</strong>
+            미수수익 계상<br>선수수익 정리
+        </div>
+        <div class="ref-item c-yellow">
+            <strong>📌 소모품 · 감가상각</strong>
+            소모품비 ↔ 소모품 대체<br>감가상각비 / 감가상각누계액
+        </div>
+        <div class="ref-item c-red">
+            <strong>📌 기타 결산</strong>
+            대손충당금 / 퇴직급여충당부채<br>현금과부족 · 가수금 · 가지급금
+        </div>
+    </div>
+
+</div>
+
+<!-- 팝업 -->
+<div id="combo-popup" class="combo-popup"></div>
+<div id="bonus-popup" class="bonus-pop"></div>
+
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycby-N01s4e5gHHCRZal52CODVHBNYPRPr9aWORp4mMsxsSnwOxQINcOCoHYuVlE2Y652/exec";
+const GAME_ID   = "factory";
+
+const problems = [
+    { q: "12월분 급여 미지급액 100만원을 결산에 반영하다.", hint: "비용발생(차변) / 부채발생(대변)",
+      dr: "급여", cr: "미지급비용", options: ["급여", "미지급비용", "선급비용", "현금"] },
+    { q: "결산일 현재 임차료 미지급액 30만원을 계상하다.", hint: "비용발생(차변) / 부채발생(대변)",
+      dr: "임차료", cr: "미지급비용", options: ["임차료", "미지급비용", "선수수익", "보통예금"] },
+    { q: "단기차입금에 대한 미지급이자 5만원을 계상하다.", hint: "이자비용(차변) / 미지급비용(대변)",
+      dr: "이자비용", cr: "미지급비용", options: ["이자비용", "미지급비용", "이자수익", "선급비용"] },
+    { q: "결산일 현재 광고선전비 미지급액 15만원을 계상하다.", hint: "비용발생(차변) / 부채발생(대변)",
+      dr: "광고선전비", cr: "미지급비용", options: ["광고선전비", "미지급비용", "선급비용", "미수수익"] },
+    { q: "전기료 미지급액 8만원을 결산 시 반영하다.", hint: "수도광열비(차변) / 미지급비용(대변)",
+      dr: "수도광열비", cr: "미지급비용", options: ["수도광열비", "미지급비용", "선급비용", "현금"] },
+    { q: "보험료(비용) 중 내년 귀속분(미경과분) 24만원을 정리하다.", hint: "자산증가(차변) / 비용감소(대변)",
+      dr: "선급비용", cr: "보험료", options: ["선급비용", "보험료", "미지급비용", "현금"] },
+    { q: "임차료(비용) 중 차기 해당분 36만원을 선급비용으로 처리하다.", hint: "자산증가(차변) / 비용감소(대변)",
+      dr: "선급비용", cr: "임차료", options: ["선급비용", "임차료", "미지급비용", "선수수익"] },
+    { q: "지급이자 중 차기 해당분 2만원을 정리하다.", hint: "선급비용(차변) / 이자비용 감소(대변)",
+      dr: "선급비용", cr: "이자비용", options: ["선급비용", "이자비용", "미지급비용", "이자수익"] },
+    { q: "은행 예금에 대한 미수이자 5만원을 결산에 계상하다.", hint: "자산증가(차변) / 수익발생(대변)",
+      dr: "미수수익", cr: "이자수익", options: ["미수수익", "이자수익", "선수수익", "보통예금"] },
+    { q: "건물 임대에 대한 미수임대료 20만원을 계상하다.", hint: "자산증가(차변) / 수익발생(대변)",
+      dr: "미수수익", cr: "임대료", options: ["미수수익", "임대료", "선수수익", "미지급비용"] },
+    { q: "단기대여금에 대한 미수이자 3만원을 계상하다.", hint: "미수수익(차변) / 이자수익(대변)",
+      dr: "미수수익", cr: "이자수익", options: ["미수수익", "이자수익", "선급비용", "단기대여금"] },
+    { q: "임대료(수익) 중 차기 귀속분(미경과분) 60만원을 정리하다.", hint: "수익감소(차변) / 부채발생(대변)",
+      dr: "임대료", cr: "선수수익", options: ["임대료", "선수수익", "미수수익", "이자수익"] },
+    { q: "이자수익 중 차기 해당분 4만원을 선수수익으로 처리하다.", hint: "수익감소(차변) / 부채발생(대변)",
+      dr: "이자수익", cr: "선수수익", options: ["이자수익", "선수수익", "미수수익", "이자비용"] },
+    { q: "수수료수익 중 미경과분 10만원을 결산 시 정리하다.", hint: "수익감소(차변) / 부채발생(대변)",
+      dr: "수수료수익", cr: "선수수익", options: ["수수료수익", "선수수익", "미지급비용", "미수수익"] },
+    { q: "기말 현재 소모품 미사용액 7만원을 자산 계상. (구입시 비용처리)", hint: "자산증가(차변) / 비용감소(대변)",
+      dr: "소모품", cr: "소모품비", options: ["소모품", "소모품비", "미지급금", "현금"] },
+    { q: "기말 현재 소모품 사용액 12만원을 비용 계상. (구입시 자산처리)", hint: "비용발생(차변) / 자산감소(대변)",
+      dr: "소모품비", cr: "소모품", options: ["소모품비", "소모품", "미지급비용", "선급비용"] },
+    { q: "기초에 구입한 사무용품 중 당기 사용분 5만원을 비용으로 대체하다. (구입시 자산처리)",
+      hint: "소모품비(차변) / 소모품(대변)",
+      dr: "소모품비", cr: "소모품", options: ["소모품비", "소모품", "광고선전비", "미지급금"] },
+    { q: "건물에 대한 감가상각비 200만원을 계상하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "감가상각비", cr: "감가상각누계액", options: ["감가상각비", "감가상각누계액", "건물", "미지급비용"] },
+    { q: "차량운반구 감가상각비 80만원을 결산에 반영하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "감가상각비", cr: "감가상각누계액", options: ["감가상각비", "감가상각누계액", "차량운반구", "이자비용"] },
+    { q: "비품에 대한 감가상각비 50만원을 계상하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "감가상각비", cr: "감가상각누계액", options: ["감가상각비", "감가상각누계액", "비품", "선급비용"] },
+    { q: "기계장치 감가상각비 150만원을 결산 처리하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "감가상각비", cr: "감가상각누계액", options: ["감가상각비", "감가상각누계액", "기계장치", "미지급비용"] },
+    { q: "외상매출금 잔액에 대해 1% 대손충당금(10만원)을 설정하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "대손상각비", cr: "대손충당금", options: ["대손상각비", "대손충당금", "외상매출금", "미지급비용"] },
+    { q: "받을어음에 대해 대손충당금 5만원을 설정하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "대손상각비", cr: "대손충당금", options: ["대손상각비", "대손충당금", "받을어음", "이자비용"] },
+    { q: "기말 대손충당금 잔액이 부족하여 추가로 3만원을 보충 설정하다.", hint: "비용발생(차변) / 자산차감(대변)",
+      dr: "대손상각비", cr: "대손충당금", options: ["대손상각비", "대손충당금", "미수금", "선급비용"] },
+    { q: "가지급금 50만원의 원인이 출장여비로 판명되다.", hint: "비용확정(차변) / 가지급금 제거(대변)",
+      dr: "여비교통비", cr: "가지급금", options: ["여비교통비", "가지급금", "현금", "미지급비용"] },
+    { q: "가수금 30만원이 외상매출금 회수액으로 판명되다.", hint: "부채제거(차변) / 자산감소(대변)",
+      dr: "가수금", cr: "외상매출금", options: ["가수금", "외상매출금", "현금", "선수금"] },
+    { q: "가수금(내역불명)의 원인이 제품 매출 계약금으로 밝혀지다.", hint: "부채제거(차변) / 부채계상(대변)",
+      dr: "가수금", cr: "선수금", options: ["가수금", "선수금", "외상매출금", "현금"] },
+    { q: "가지급금 20만원이 기업업무추진비로 확정되다.", hint: "비용확정(차변) / 가지급금 제거(대변)",
+      dr: "기업업무추진비", cr: "가지급금", options: ["기업업무추진비", "가지급금", "현금", "미지급비용"] },
+    { q: "단기매매증권의 공정가치가 장부가액보다 30만원 상승하다.", hint: "자산증가(차변) / 평가이익(대변)",
+      dr: "단기매매증권", cr: "단기매매증권평가이익", options: ["단기매매증권", "단기매매증권평가이익", "매도가능증권", "이자수익"] },
+    { q: "단기매매증권의 공정가치가 장부가액보다 20만원 하락하다.", hint: "평가손실(차변) / 자산감소(대변)",
+      dr: "단기매매증권평가손실", cr: "단기매매증권", options: ["단기매매증권평가손실", "단기매매증권", "매도가능증권", "이자비용"] },
+    { q: "결산일 현재 현금 부족액 3만원의 원인을 파악할 수 없다.", hint: "잡손실(차변) / 현금과부족 제거(대변)",
+      dr: "잡손실", cr: "현금과부족", options: ["잡손실", "현금과부족", "현금", "미지급비용"] },
+    { q: "결산일 현재 현금 초과액 2만원의 원인을 파악할 수 없다.", hint: "현금과부족 제거(차변) / 잡이익(대변)",
+      dr: "현금과부족", cr: "잡이익", options: ["현금과부족", "잡이익", "현금", "이자수익"] },
+    { q: "기말 외화예금 평가 시 환율 상승으로 외화환산이익 10만원 발생하다.", hint: "자산증가(차변) / 수익발생(대변)",
+      dr: "외화예금", cr: "외화환산이익", options: ["외화예금", "외화환산이익", "외화환산손실", "이자수익"] },
+    { q: "기말 외화매출채권 평가 시 환율 하락으로 외화환산손실 5만원 발생하다.", hint: "손실(차변) / 자산감소(대변)",
+      dr: "외화환산손실", cr: "외상매출금", options: ["외화환산손실", "외상매출금", "외화환산이익", "미수수익"] },
+];
+
+// ═══════════ 게임 상태 ═══════════
+const GAME_TIME = 60;
+let score=0, combo=0, maxCombo=0;
+let timeLeft=GAME_TIME, timerInterval=null;
+let currentP=null, isPlaying=false;
+let phase='dr', inputDr=null, inputCr=null;
+let okCount=0, noCount=0, lastProblem=null;
+
+let audioCtx;
+function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+function playSound(type) {
+    try {
+        const ctx=getAudio(), osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        const t=ctx.currentTime;
+        if (type==='click') {
+            osc.type='triangle'; osc.frequency.setValueAtTime(440,t);
+            gain.gain.setValueAtTime(0.08,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+            osc.start(t); osc.stop(t+0.08);
+        } else if (type==='correct') {
+            osc.type='sine'; osc.frequency.setValueAtTime(660,t); osc.frequency.linearRampToValueAtTime(990,t+0.12);
+            gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+            osc.start(t); osc.stop(t+0.3);
+        } else {
+            osc.type='sawtooth'; osc.frequency.setValueAtTime(220,t); osc.frequency.linearRampToValueAtTime(80,t+0.3);
+            gain.gain.setValueAtTime(0.18,t); gain.gain.linearRampToValueAtTime(0.001,t+0.3);
+            osc.start(t); osc.stop(t+0.3);
+        }
+    } catch(e){}
+}
+
+// ═══════════ 힌트 토글 ═══════════
+function toggleHint() {
+    const txt=document.getElementById('hint-text');
+    const btn=document.getElementById('hint-btn');
+    const on=txt.classList.contains('visible');
+    txt.classList.toggle('visible');
+    btn.classList.toggle('shown');
+    btn.textContent = on ? '💡 힌트 보기' : '💡 힌트 숨기기';
+}
+
+// ═══════════ 참고표 토글 ═══════════
+function toggleRef() {
+    const panel=document.getElementById('ref-panel');
+    const btn=document.getElementById('ref-btn');
+    const open=panel.classList.contains('open');
+    panel.classList.toggle('open');
+    btn.classList.toggle('open');
+    btn.textContent = open ? '📋 계정과목 참고표 ▾' : '📋 계정과목 참고표 ▴';
+}
+
+// ═══════════ 게임 흐름 ═══════════
+function startGame() {
+    getAudio();
+    document.getElementById('start-screen').style.display='none';
+    document.getElementById('result-screen').style.display='none';
+    score=0; combo=0; maxCombo=0; timeLeft=GAME_TIME; okCount=0; noCount=0;
+    isPlaying=true;
+    updateHUD();
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval=setInterval(tick, 1000);
+    nextProblem();
+}
+
+function tick() { timeLeft--; updateHUD(); if(timeLeft<=0) endGame(); }
+
+function updateHUD() {
+    document.getElementById('hud-time').textContent=timeLeft;
+    document.getElementById('hud-score').textContent=score.toLocaleString();
+    document.getElementById('hud-combo').textContent=combo+'x';
+    document.getElementById('timer-bar').style.width=Math.max(0,timeLeft/GAME_TIME*100)+'%';
+    document.getElementById('hud-time').style.color=
+        timeLeft<=10?'#ff2d55':timeLeft<=20?'#ffd600':'var(--red)';
+}
+
+function nextProblem() {
+    if (!isPlaying) return;
+    let p; do { p=problems[Math.floor(Math.random()*problems.length)]; } while(p===lastProblem);
+    lastProblem=currentP=p;
+    phase='dr'; inputDr=null; inputCr=null;
+
+    document.getElementById('q-text').textContent=p.q;
+
+    // 힌트 초기화 (숨김)
+    const hTxt=document.getElementById('hint-text');
+    const hBtn=document.getElementById('hint-btn');
+    hTxt.textContent=p.hint;
+    hTxt.classList.remove('visible');
+    hBtn.classList.remove('shown');
+    hBtn.textContent='💡 힌트 보기';
+
+    document.getElementById('q-card').className='question-card';
+    resetSlots(); renderOptions(); updateStepHint();
+}
+
+function resetSlots() {
+    document.getElementById('slot-dr').className='slot active-debit';
+    document.getElementById('ph-dr').style.display='';
+    document.getElementById('val-dr').style.display='none';
+    document.getElementById('undo-dr').style.display='none';
+    document.getElementById('slot-cr').className='slot';
+    document.getElementById('ph-cr').style.display='';
+    document.getElementById('val-cr').style.display='none';
+    document.getElementById('undo-cr').style.display='none';
+}
+
+function renderOptions() {
+    const grid=document.getElementById('options-grid');
+    grid.innerHTML='';
+    [...currentP.options].sort(()=>Math.random()-0.5).forEach(opt=>{
+        const btn=document.createElement('button');
+        btn.className='opt-btn'; btn.textContent=opt;
+        btn.onclick=()=>handleOptionClick(opt, btn);
+        grid.appendChild(btn);
+    });
+}
+
+function updateStepHint() {
+    const el=document.getElementById('step-hint');
+    if (phase==='dr') el.innerHTML='<span>차변</span> 계정과목을 먼저 선택하세요';
+    else              el.innerHTML='<span>대변</span> 계정과목을 선택하면 자동 채점됩니다';
+}
+
+function revertSlot(which) {
+    if (!isPlaying || which!=='dr' || !inputDr) return;
+    inputDr=null; inputCr=null; phase='dr';
+    document.getElementById('slot-dr').className='slot active-debit';
+    document.getElementById('ph-dr').style.display='';
+    document.getElementById('val-dr').style.display='none';
+    document.getElementById('undo-dr').style.display='none';
+    document.getElementById('slot-cr').className='slot';
+    document.getElementById('ph-cr').style.display='';
+    document.getElementById('val-cr').style.display='none';
+    document.getElementById('undo-cr').style.display='none';
+    document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('used','highlight-debit','highlight-credit'));
+    updateStepHint();
+}
+
+function handleOptionClick(val, btn) {
+    if (!isPlaying) return;
+    playSound('click');
+    if (phase==='dr') {
+        inputDr=val; phase='cr';
+        document.getElementById('slot-dr').className='slot filled-debit';
+        document.getElementById('ph-dr').style.display='none';
+        const vdr=document.getElementById('val-dr'); vdr.textContent=val; vdr.style.display='';
+        document.getElementById('undo-dr').style.display='';
+        btn.classList.add('used','highlight-debit');
+        document.getElementById('slot-cr').className='slot active-credit';
+        updateStepHint();
+    } else {
+        inputCr=val;
+        btn.classList.add('used','highlight-credit');
+        document.getElementById('ph-cr').style.display='none';
+        const vcr=document.getElementById('val-cr'); vcr.textContent=val; vcr.style.display='';
+        document.getElementById('slot-cr').className='slot filled-credit';
+        setTimeout(checkAnswer, 120);
+    }
+}
+
+function checkAnswer() {
+    if (!isPlaying) return;
+    const card=document.getElementById('q-card');
+    const drSlot=document.getElementById('slot-dr');
+    const crSlot=document.getElementById('slot-cr');
+    if (inputDr===currentP.dr && inputCr===currentP.cr) {
+        playSound('correct'); combo++; if(combo>maxCombo) maxCombo=combo;
+        score+=150+combo*30; okCount++; timeLeft+=10;
+        card.classList.add('correct'); drSlot.classList.add('correct'); crSlot.classList.add('correct');
+        showBonus(); if(combo>=2) showCombo(combo); updateHUD();
+        setTimeout(nextProblem, 520);
+    } else {
+        playSound('wrong'); combo=0; timeLeft=Math.max(0,timeLeft-5); noCount++;
+        card.classList.add('wrong'); drSlot.classList.add('wrong'); crSlot.classList.add('wrong');
+        document.body.classList.add('shake'); updateHUD();
+        setTimeout(()=>{
+            document.body.classList.remove('shake');
+            phase='dr'; inputDr=null; inputCr=null;
+            card.className='question-card'; resetSlots();
+            document.querySelectorAll('.opt-btn').forEach(b=>b.classList.remove('used','highlight-debit','highlight-credit'));
+            updateStepHint();
+        }, 600);
+    }
+}
+
+function showBonus() {
+    const el=document.getElementById('bonus-popup');
+    el.textContent='+10초 ⏰'; el.style.display='block';
+    el.style.animation='none'; el.offsetHeight;
+    el.style.animation='bonusPop 0.9s ease-out forwards';
+    setTimeout(()=>el.style.display='none', 900);
+}
+function showCombo(n) {
+    const el=document.getElementById('combo-popup');
+    el.textContent=n+' COMBO! 🔥'; el.style.display='block';
+    el.style.animation='none'; el.offsetHeight;
+    el.style.animation='comboPop 0.75s ease-out forwards';
+    setTimeout(()=>el.style.display='none', 750);
+}
+
+function endGame() {
+    isPlaying=false; clearInterval(timerInterval);
+    document.getElementById('res-score').textContent=score.toLocaleString()+'점';
+    document.getElementById('stat-ok').textContent=okCount;
+    document.getElementById('stat-no').textContent=noCount;
+    document.getElementById('stat-combo').textContent=maxCombo;
+    let rank='👶 분개 초보';
+    if      (score>=3000) rank='🏭 전설의 공장장';
+    else if (score>=1500) rank='🔧 숙련된 조교';
+    else if (score>=600)  rank='💼 수습 사원';
+    document.getElementById('res-rank').textContent='최종 직급: '+rank;
+    document.getElementById('player-name').value='';
+    document.getElementById('save-status').textContent='';
+    document.getElementById('save-btn').disabled=false;
+    document.getElementById('result-screen').style.display='flex';
+    loadRanking();
+}
+
+async function saveScore() {
+    const name=document.getElementById('player-name').value.trim().toUpperCase();
+    if (!name) { alert('이니셜을 입력하세요 (예: KMJ)'); return; }
+    if (name.length<2) { alert('2글자 이상 입력하세요'); return; }
+    const btn=document.getElementById('save-btn');
+    const st=document.getElementById('save-status');
+    btn.disabled=true; st.textContent='저장 중...'; st.style.color='rgba(255,255,255,0.4)';
+    const today=new Date().toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'});
+    const data={name,score,maxCombo,okCount,date:today};
+    if (!SHEET_URL||SHEET_URL==="YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+        saveLocal(data); st.textContent='✓ 로컬 저장 완료 (Google Sheets 미연결)';
+        st.style.color='var(--yellow)'; loadRanking(); return;
+    }
+    try {
+        await fetch(SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        saveLocal(data); st.textContent='✓ 저장 완료! 랭킹에 반영됩니다'; st.style.color='var(--green)';
+        await loadRanking();
+    } catch(e) {
+        saveLocal(data); st.textContent='✓ 로컬 저장 완료 (네트워크 오류)'; st.style.color='var(--yellow)'; loadRanking();
+    }
+}
+function saveLocal(d) {
+    const l=getLocal(); l.push(d); l.sort((a,b)=>b.score-a.score);
+    localStorage.setItem('jfGame_v3',JSON.stringify(l.slice(0,20)));
+}
+function getLocal() { return JSON.parse(localStorage.getItem('jfGame_v3')||'[]'); }
+
+async function loadRanking() {
+    const box=document.getElementById('rank-box');
+    if (!SHEET_URL||SHEET_URL==="YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") { renderRankList(getLocal()); return; }
+    box.innerHTML='<div class="loading-row"><div class="spinner"></div> 불러오는 중...</div>';
+    try { renderRankList(mergeRank(await (await fetch(SHEET_URL+'?action=get')).json(), getLocal())); }
+    catch(e) { renderRankList(getLocal()); }
+}
+function mergeRank(remote,local) {
+    const map=new Map();
+    [...(Array.isArray(remote)?remote:[]),...local].forEach(r=>{const k=r.name+'_'+r.score; if(!map.has(k)) map.set(k,r);});
+    return [...map.values()].sort((a,b)=>b.score-a.score).slice(0,15);
+}
+function renderRankList(list) {
+    const box=document.getElementById('rank-box');
+    if (!list||!list.length) { box.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:1rem;">아직 기록이 없습니다</div>'; return; }
+    const me=document.getElementById('player-name').value.trim().toUpperCase();
+    box.innerHTML=list.map((r,i)=>{
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'위';
+        return `<div class="rank-row ${r.name===me?'rank-me':''}">
+            <div class="rk-num ${i<3?'top':''}">${medal}</div>
+            <div class="rk-name">${r.name}</div>
+            <div class="rk-score">${(r.score||0).toLocaleString()}점</div>
+            <div class="rk-date">${r.date||''}</div>
+        </div>`;
+    }).join('');
+}
+</script>
+</div> </body>
+</html>
