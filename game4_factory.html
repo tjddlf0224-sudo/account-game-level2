@@ -241,7 +241,10 @@
                 <div class="hud-label">COMBO</div>
                 <div class="hud-val" id="hud-combo">0x</div>
             </div>
-            <button onclick="location.href='index.html'" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); color:white; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:'Black Han Sans'; font-size:1.1rem; margin-left:20px;">🏠 나가기</button>
+            
+            <button onclick="if(isPlaying) endGame();" style="background:var(--red); border:none; color:white; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:'Black Han Sans'; font-size:1.1rem; margin-left:20px; box-shadow:0 0 10px rgba(255,45,85,0.4);">⏹ 그만하기</button>
+            
+            <button onclick="location.href='index.html'" style="background:rgba(255,255,255,0.1); border:1px solid var(--border); color:white; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:'Black Han Sans'; font-size:1.1rem; margin-left:10px;">🏠 나가기</button>
         </div>
     </header>
 
@@ -271,7 +274,7 @@
 
     <script>
         // ★ 통합 GAS 연동 URL 및 GAME ID 설정
-        const SHEET_URL = "https://script.google.com/macros/s/AKfycby-N01s4e5gHHCRZal52CODVHBNYPRPr9aWORp4mMsxsSnwOxQINcOCoHYuVlE2Y652/exec"; 
+        const SHEET_URL = "YOUR_UNIFIED_GAS_URL_HERE"; 
         const GAME_ID = "factory"; // 식별자
 
         // 문제 은행 (34문항)
