@@ -864,7 +864,7 @@ async function loadRanking() {
     }
     container.innerHTML = '<div class="loading" style="justify-content:center;padding:20px 0;"><div class="spinner"></div> 불러오는 중...</div>';
     try {
-        const res = await fetch(SHEET_URL + '?action=get');
+        const res = await fetch(SHEET_URL + '?action=get&game=' + GAME_ID);
         const data = await res.json();
         renderRankList(mergeRankings(data, getLocal()));
     } catch(e) { renderRankList(getLocal()); }
