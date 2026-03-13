@@ -621,7 +621,6 @@
                 await fetch(SHEET_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 st.textContent = '✓ 랭킹 등록 완료!';
