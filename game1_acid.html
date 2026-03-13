@@ -396,11 +396,20 @@
                 showFloatingText(x, y, "💊 HP +10", "#2ecc71"); wordObj.el.remove();
             } else if (wordObj.type === 'account') {
                 playSound('correct'); combo++;
+                
+                // ⏱️ 정답을 맞출 때마다 1초씩 시간 증가!
+                timeLeft += 1; 
+
                 if (combo >= 3 && !isFever) { isFever = true; document.body.classList.add('fever-mode'); }
                 let gain = 100 + combo * 20; if (isFever) gain *= 2; score += gain;
+                
+                // 유저가 시간 증가를 알 수 있게 텍스트에도 표시해 줍니다
                 const label = isFever ? `🔥+${gain}` : `+${gain}`;
-                showFloatingText(x, y, `${label} (${wordObj.category})`, isFever ? "#bd00ff" : "#ffd700");
+                showFloatingText(x, y, `${label} (+1초)`, isFever ? "#bd00ff" : "#ffd700");
+                
+                // 10콤보 달성 시 추가로 3초 더 주는 기존 로직은 유지 (원치 않으면 지우셔도 됩니다)
                 if (combo > 0 && combo % 10 === 0) { timeLeft += 3; showFloatingText(x, y - 40, "+3초⏱️", "#2ecc71"); }
+                
                 wordObj.el.classList.add('word-correct'); wordObj.el.classList.add('hit-effect');
                 setTimeout(() => wordObj.el.remove(), 400);
             } else if (wordObj.type === 'fake') {
