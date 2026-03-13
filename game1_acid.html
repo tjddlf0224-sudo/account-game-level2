@@ -295,7 +295,7 @@
             gameLoopId = requestAnimationFrame(gameLoop);
             spawnTimerId = setInterval(spawnWord, 600); 
             countdownTimerId = setInterval(() => {
-                if (isPaused) return;
+                if (isPaused || freezeTime > 0) return; // ❄️ 얼음 상태일 때 시간 차감 방지
                 timeLeft--; 
                 if (timeLeft <= 10) document.body.classList.add('danger-mode');
                 else document.body.classList.remove('danger-mode');
